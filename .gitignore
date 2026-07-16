@@ -1,0 +1,15 @@
+# Raw Sketchfab downloads — the game loads canonical copies from assets/models/
+# Anchored to repo root so assets/models/ (the ones the game uses) stay tracked
+/models/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.log
+
+# Node (in case tooling is added later)
+node_modules/
+npm-debug.log*
+
+# Claude Code local server/session config
+.claude/launch.json

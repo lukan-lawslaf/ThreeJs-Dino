@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>KOMORI VILLAGE — Dino Breakout</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --amber:#e8b34a; --amber-dim:#a97f2f; --green:#7fae6a; --red:#c14b3a;
+    --bg:rgba(8,12,8,.72); --line:rgba(232,179,74,.35);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Rajdhani',system-ui,sans-serif;color:#e8e4d8}
+  #game{position:fixed;inset:0;display:block}
+  .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:50}
+  .hidden{display:none!important}
+  h1.title{font-family:'Cinzel',serif;font-size:clamp(38px,7vw,86px);letter-spacing:.18em;color:var(--amber);
+    text-shadow:0 0 30px rgba(232,179,74,.35),0 2px 0 #000}
+  .subtitle{letter-spacing:.55em;font-size:14px;color:#cfc9b8;text-transform:uppercase;margin-top:6px;opacity:.8}
+
+  /* ---------- Loading ---------- */
+  #loading{background:radial-gradient(ellipse at center,#101a10 0%,#000 80%)}
+  #loadbar{width:min(420px,70vw);height:3px;background:#222;margin-top:38px;border-radius:2px;overflow:hidden}
+  #loadbar>div{height:100%;width:0%;background:var(--amber);transition:width .2s}
+  #loadmsg{margin-top:12px;font-size:13px;letter-spacing:.3em;text-transform:uppercase;color:#8a8674}
+
+  /* ---------- Main / Pause menus ---------- */
+  .menu{background:rgba(0,0,0,.55);backdrop-filter:blur(6px)}
+  .menu .panel{display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:34px}
+  .btn{font-family:'Rajdhani',sans-serif;font-size:18px;letter-spacing:.35em;text-transform:uppercase;
+    background:transparent;color:#ddd6c2;border:1px solid var(--line);padding:12px 54px;cursor:pointer;
+    transition:all .15s;min-width:300px;text-align:center}
+  .btn:hover{background:rgba(232,179,74,.12);color:var(--amber);border-color:var(--amber)}
+  .btn[disabled]{opacity:.35;pointer-events:none}
+  .menu .hint{position:absolute;bottom:26px;font-size:12px;letter-spacing:.25em;color:#777;text-transform:uppercase}
+
+  /* ---------- Settings ---------- */
+  #settings .panel{background:var(--bg);border:1px solid var(--line);padding:34px 44px;min-width:420px}
+  #settings h2{font-family:'Cinzel',serif;color:var(--amber);letter-spacing:.3em;font-size:20px;margin-bottom:22px;text-align:center}
+  .setrow{display:flex;justify-content:space-between;align-items:center;gap:30px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+  .setrow label{letter-spacing:.15em;text-transform:uppercase;font-size:14px;color:#c9c3b0}
+  .setrow select,.setrow input[type=range]{accent-color:var(--amber);background:#141810;color:#e8e4d8;border:1px solid #333;padding:4px 8px;font-family:inherit}
+  .setnote{font-size:11px;color:#8a8674;margin-top:14px;letter-spacing:.1em;text-align:center}
+
+  /* ---------- HUD ---------- */
+  #hud{position:fixed;inset:0;pointer-events:none;z-index:20}
+  .letterbox{position:absolute;left:0;right:0;height:0;background:#000;transition:height 1.2s ease;z-index:30}
+  #lbTop{top:0}#lbBottom{bottom:0}
+  .cinema .letterbox{height:6vh}
+  #vignette{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.55) 100%)}
+  #damage{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 40%,rgba(180,20,10,.55) 100%);opacity:0;transition:opacity .1s}
+  #crosshair{position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px;background:rgba(255,255,255,.65);border-radius:50%}
+
+  #bars{position:absolute;left:34px;bottom:34px;width:240px}
+  .bar{height:6px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.15);margin-top:8px;position:relative}
+  .bar>div{position:absolute;inset:0;transform-origin:left;transition:transform .15s linear}
+  #healthbar>div{background:linear-gradient(90deg,#b33a2a,#d8663a)}
+  #staminabar>div{background:linear-gradient(90deg,#8aa04f,#c9c26a)}
+  .barlabel{font-size:11px;letter-spacing:.35em;text-transform:uppercase;color:rgba(232,228,216,.7)}
+
+  #compassWrap{position:absolute;top:22px;left:50%;transform:translateX(-50%);width:340px;height:26px;overflow:hidden;
+    -webkit-mask-image:linear-gradient(90deg,transparent,#000 20%,#000 80%,transparent);mask-image:linear-gradient(90deg,transparent,#000 20%,#000 80%,transparent)}
+  #compass{position:absolute;top:0;white-space:nowrap;font-size:15px;letter-spacing:0;color:#ded8c4;text-shadow:0 1px 2px #000}
+  #compass span{display:inline-block;width:60px;text-align:center;font-weight:600}
+  #compass span.min{color:#8a8674;font-size:10px;line-height:26px}
+  #compassTick{position:absolute;top:14px;left:50%;width:1px;height:10px;background:var(--amber);transform:translateX(-50%)}
+
+  #objective{position:absolute;top:64px;left:34px;max-width:380px;background:var(--bg);border-left:2px solid var(--amber);
+    padding:10px 16px;font-size:15px;letter-spacing:.08em;transition:opacity .6s}
+  #objective .tag{font-size:10px;letter-spacing:.4em;color:var(--amber);text-transform:uppercase;display:block;margin-bottom:2px}
+
+  #prompt{position:absolute;left:50%;top:58%;transform:translateX(-50%);background:var(--bg);border:1px solid var(--line);
+    padding:8px 22px;font-size:15px;letter-spacing:.12em;opacity:0;transition:opacity .15s}
+  #prompt b{color:var(--amber);font-weight:600}
+
+  #notices{position:absolute;right:34px;top:80px;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+  .notice{background:var(--bg);border-right:2px solid var(--amber);padding:8px 16px;font-size:14px;letter-spacing:.1em;
+    animation:noticeIn .3s ease,noticeOut .6s ease 4.4s forwards}
+  @keyframes noticeIn{from{opacity:0;transform:translateX(20px)}to{opacity:1}}
+  @keyframes noticeOut{to{opacity:0;transform:translateX(20px)}}
+
+  /* ---------- Inventory ---------- */
+  #inventory{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);z-index:40}
+  #inventory .panel{background:var(--bg);border:1px solid var(--line);padding:30px 40px;min-width:400px}
+  #inventory h2{font-family:'Cinzel',serif;color:var(--amber);letter-spacing:.3em;font-size:18px;margin-bottom:16px}
+  #invlist{list-style:none;min-height:60px}
+  #invlist li{padding:8px 4px;border-bottom:1px solid rgba(255,255,255,.06);letter-spacing:.1em;font-size:15px}
+  #invlist li .desc{color:#8a8674;font-size:12px;display:block}
+  #invlist .empty{color:#666;font-style:italic}
+
+  /* ---------- Death / Win ---------- */
+  #death{background:radial-gradient(ellipse at center,rgba(60,0,0,.85),#000 90%)}
+  #death h1{color:var(--red)}
+  #win{background:radial-gradient(ellipse at center,rgba(20,40,20,.9),#000 90%)}
+  .bigtext{font-family:'Cinzel',serif;font-size:clamp(30px,5vw,60px);letter-spacing:.2em;color:var(--amber)}
+  .flavor{margin-top:14px;color:#b6b0a0;letter-spacing:.15em;font-size:15px;max-width:520px;text-align:center;line-height:1.6}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div id="vignette"></div>
+  <div id="damage"></div>
+  <div class="letterbox" id="lbTop"></div>
+  <div class="letterbox" id="lbBottom"></div>
+  <div id="crosshair"></div>
+  <div id="compassWrap"><div id="compass"></div><div id="compassTick"></div></div>
+  <div id="bars">
+    <div class="barlabel">Health</div><div class="bar" id="healthbar"><div></div></div>
+    <div class="barlabel" style="margin-top:10px">Stamina</div><div class="bar" id="staminabar"><div></div></div>
+  </div>
+  <div id="objective"><span class="tag">Objective</span><span id="objectiveText"></span></div>
+  <div id="prompt"></div>
+  <div id="notices"></div>
+</div>
+
+<!-- Loading -->
+<div id="loading" class="overlay">
+  <h1 class="title">KOMORI VILLAGE</h1>
+  <div class="subtitle">Dino Breakout</div>
+  <div id="loadbar"><div></div></div>
+  <div id="loadmsg">Initializing…</div>
+</div>
+
+<!-- Main menu -->
+<div id="menu" class="overlay menu hidden">
+  <h1 class="title">KOMORI VILLAGE</h1>
+  <div class="subtitle">Dino Breakout</div>
+  <div class="panel">
+    <button class="btn" id="btnNew">New Game</button>
+    <button class="btn" id="btnContinue" disabled>Continue</button>
+    <button class="btn" id="btnSettings">Settings</button>
+  </div>
+  <div class="hint">WASD move · Shift sprint · Space jump · C sneak · F torch · E interact · Tab bag</div>
+</div>
+
+<!-- Pause -->
+<div id="pause" class="overlay menu hidden">
+  <h1 class="title" style="font-size:42px">PAUSED</h1>
+  <div class="panel">
+    <button class="btn" id="btnResume">Resume</button>
+    <button class="btn" id="btnPauseSettings">Settings</button>
+    <button class="btn" id="btnQuit">Quit To Menu</button>
+  </div>
+</div>
+
+<!-- Settings -->
+<div id="settings" class="overlay menu hidden">
+  <div class="panel">
+    <h2>SETTINGS</h2>
+    <div class="setrow"><label>Quality</label>
+      <select id="setQuality"><option value="low">Low</option><option value="medium">Medium</option>
+      <option value="high">High</option><option value="ultra">Ultra</option></select></div>
+    <div class="setrow"><label>Bloom</label><input type="checkbox" id="setBloom"></div>
+    <div class="setrow"><label>SSAO</label><input type="checkbox" id="setSSAO"></div>
+    <div class="setrow"><label>Field of View</label><input type="range" id="setFov" min="60" max="100" step="1"></div>
+    <div class="setrow"><label>Master Volume</label><input type="range" id="setVolume" min="0" max="1" step="0.05"></div>
+    <div class="setrow"><label>Music Volume</label><input type="range" id="setMusic" min="0" max="1" step="0.05"></div>
+    <div class="setnote">Quality preset (vegetation density, shadows) fully applies after reload.</div>
+    <button class="btn" id="btnSettingsBack" style="margin-top:22px">Back</button>
+  </div>
+</div>
+
+<!-- Inventory -->
+<div id="inventory" class="hidden">
+  <div class="panel"><h2>FIELD PACK</h2><ul id="invlist"></ul></div>
+</div>
+
+<!-- Death -->
+<div id="death" class="overlay hidden">
+  <h1 class="title bigtext">YOU DIDN'T MAKE IT</h1>
+  <div class="flavor" id="deathCause">Something found you in the streets.</div>
+  <div class="panel" style="margin-top:30px"><button class="btn" id="btnRespawn">Return To Checkpoint</button></div>
+</div>
+
+<!-- Win -->
+<div id="win" class="overlay hidden">
+  <h1 class="title bigtext">SAFE AND SOUND</h1>
+  <div class="flavor">The shelter door seals behind you. Outside, heavy footsteps fade
+    into the evening. Komori Village will rebuild — you made it.</div>
+  <div class="panel" style="margin-top:30px"><button class="btn" id="btnWinMenu">Main Menu</button></div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
